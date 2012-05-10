@@ -1684,6 +1684,45 @@ class FieldTest(unittest.TestCase):
 
         self._verify_file_delete(testimage, 'image')
 
+    def test_embedded_file_delete_cleanup(self):
+        """Ensure that the gridfs file is deleted when a document
+        with an EmbeddedDocument and GridFSProxied Field is deleted"""
+        class EmbeddedFile(EmbeddedDocument):
+            f = FileField()
+
+        class TestFile(Document):
+            embed_file = EmbeddedDocumentField(EmbeddedFile)
+
+        class EmbeddedImage(EmbeddedDocument):
+            image = ImageField()
+
+        class TestImage(Document):
+            embed_image = EmbeddedDocumentField(EmbeddedImage)
+
+        TestFile.drop_collection()
+
+        testfile = TestFile()
+        testfile.embed_file = EmbeddedFile()
+        testfile.embed_file.f.put('Hello, World!')
+        testfile.save()
+
+        self._verify_file_delete(testfile, 'embed_file.f')
+
+        TestImage.drop_collection()
+
+        testimage = TestImage()
+        testimage.embed_image = EmbeddedImage()
+        testimage.embed_image.image.put(open(TEST_IMAGE_PATH, 'r'))
+        testimage.save()
+
+        self._verify_file_delete(testimage, 'embed_image.image')
+
+        testfile = TestFile()
+        testfile.embed_file = EmbeddedFile()
+        testfile.save()
+
+        self._verify_file_delete(testfile, 'embed_file.f')
+
     def test_file_field_no_default(self):
 
         class GridDocument(Document):

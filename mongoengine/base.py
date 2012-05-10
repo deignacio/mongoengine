@@ -618,10 +618,6 @@ class DocumentMetaclass(type):
                     raise InvalidDocumentError("Reverse delete rules are not supported for EmbeddedDocuments (field: %s)" % field.name)
                 f.document_type.register_delete_rule(new_class, field.name, delete_rule)
 
-            proxy_class = getattr(field, 'proxy_class', None)
-            if proxy_class is not None:
-                new_class.register_proxy_field(field.name, proxy_class)
-
             if field.name and hasattr(Document, field.name) and EmbeddedDocument not in new_class.mro():
                 raise InvalidDocumentError("%s is a document method and not a valid field name" % field.name)
 
@@ -758,6 +754,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         unique_indexes = cls._unique_with_indexes(new_class)
         new_class._meta['unique_indexes'] = unique_indexes
 
+        from mongoengine import EmbeddedDocumentField
+
         for field_name, field in new_class._fields.items():
             # Check for custom primary key
             if field.primary_key:
@@ -769,6 +767,19 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                     new_class._meta['id_field'] = field_name
                     # Make 'Document.id' an alias to the real primary key field
                     new_class.id = field
+
+            f = field
+            if isinstance(f, EmbeddedDocumentField):
+                for embedded_field_name, embedded_field in f.document_type._fields.items():
+                    proxy_class = getattr(embedded_field, 'proxy_class', None)
+                    if proxy_class is not None:
+                        composite_field_name = field_name + "." + embedded_field_name
+                        new_class._meta['proxy_fields'][composite_field_name] = proxy_class
+
+
+            proxy_class = getattr(field, 'proxy_class', None)
+            if proxy_class is not None:
+                new_class._meta['proxy_fields'][field_name] = proxy_class
 
         if not new_class._meta['id_field']:
             new_class._meta['id_field'] = 'id'
