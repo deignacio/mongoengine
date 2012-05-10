@@ -1661,6 +1661,29 @@ class FieldTest(unittest.TestCase):
 
         self._verify_file_delete(testimage, 'image')
 
+    def test_document_delete_no_file_cleanup(self):
+        """Ensure that document deletion when a GridFSProxied
+        Field exists but is not present works as expected"""
+        class TestFile(Document):
+            f = FileField()
+
+        class TestImage(Document):
+            image = ImageField()
+
+        TestFile.drop_collection()
+
+        testfile = TestFile()
+        testfile.save()
+
+        self._verify_file_delete(testfile, 'f')
+
+        TestImage.drop_collection()
+
+        testimage = TestImage()
+        testimage.save()
+
+        self._verify_file_delete(testimage, 'image')
+
     def test_file_field_no_default(self):
 
         class GridDocument(Document):
