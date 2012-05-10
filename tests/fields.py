@@ -1620,6 +1620,22 @@ class FieldTest(unittest.TestCase):
             file = FileField()
         DemoFile.objects.create()
 
+    def _verify_file_delete(self, doc, file_attr_name):
+        obj = doc
+        sub_file_attrs = file_attr_name.split('.')
+        while sub_file_attrs:
+            sub_f_attr = sub_file_attrs.pop(0)
+            attr = getattr(obj, sub_f_attr)
+            obj = attr
+
+        grid_id = attr.grid_id
+        fs = attr.fs
+
+        doc.delete()
+
+        if grid_id:
+            self.assertFalse(fs.exists(grid_id))
+
     def test_file_delete_cleanup(self):
         """Ensure that the gridfs file is deleted when a document
         with a GridFSProxied Field is deleted"""
@@ -1635,11 +1651,7 @@ class FieldTest(unittest.TestCase):
         testfile.file.put('Hello, World!')
         testfile.save()
 
-        testfile_grid_id = testfile.file.grid_id
-        testfile_fs = testfile.file.fs
-
-        testfile.delete()
-        self.assertFalse(testfile_fs.exists(testfile_grid_id))
+        self._verify_file_delete(testfile, 'file')
 
         TestImage.drop_collection()
 
@@ -1647,11 +1659,7 @@ class FieldTest(unittest.TestCase):
         testimage.image.put(open(TEST_IMAGE_PATH, 'r'))
         testimage.save()
 
-        testimage_grid_id = testimage.image.grid_id
-        testimage_fs = testimage.image.fs
-
-        testimage.delete()
-        self.assertFalse(testimage_fs.exists(testimage_grid_id))
+        self._verify_file_delete(testimage, 'image')
 
     def test_file_field_no_default(self):
 
